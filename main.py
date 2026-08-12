@@ -1,6 +1,23 @@
 import logging
+import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+
+# Giả lập Server giữ Render luôn hoạt động
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot BCR is running!")
+
+def run_http_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
+    server.serve_forever()
+
+threading.Thread(target=run_http_server, daemon=True).start()
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -32,9 +49,6 @@ def analyze_bcr(history: str) -> str:
         else:
             break
 
-    prediction = ""
-    reason = ""
-    
     if streak >= 4:
         prediction = last_symbol
         reason = f"Phát hiện cầu Bệt {last_symbol} ({streak} tay liên tiếp). Khuyến nghị đi theo cầu."
@@ -47,7 +61,7 @@ def analyze_bcr(history: str) -> str:
 
     name_map = {'B': '🔴 BANKER', 'P': '🔵 PLAYER', 'T': '🟢 TIE'}
 
-    report = (
+    return (
         f"📊 **KẾT QUẢ PHÂN TÍCH BCR**\n"
         f"-------------------------------\n"
         f"🔹 **Tổng số ván:** {total}\n"
@@ -59,7 +73,6 @@ def analyze_bcr(history: str) -> str:
         f"💡 **DỰ ĐOÁN VÁN TẾP THEO:** {name_map[prediction]}\n"
         f"📌 *Cơ sở:* {reason}"
     )
-    return report
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
