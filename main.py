@@ -103,7 +103,7 @@ if __name__ == '__main__':
     server_thread.start()
 
     # Chạy Telegram Bot
-    BOT_TOKEN = "8960157189:AAExpczWz8zTNJZo0ApGq_pt-v2lNRV4XlI"
+    BOT_TOKEN = "8960157189:AAFo_-Pq66qhUI5_87ZnWH4zM6MdCGiT0d4"
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("clear", clear))
