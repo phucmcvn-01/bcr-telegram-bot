@@ -1,24 +1,22 @@
-import logging
+        import logging
 import os
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Giả lập Server giữ Render luôn hoạt động
-class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot BCR is running!")
+# 1. Tạo Web Server đơn giản bằng Flask cho Render
+web_app = Flask(__name__)
 
-def run_http_server():
+@web_app.route('/')
+def home():
+    return "Bot BCR is running live!"
+
+def run_flask():
     port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
-    server.serve_forever()
+    web_app.run(host='0.0.0.0', port=port)
 
-threading.Thread(target=run_http_server, daemon=True).start()
-
+# 2. Cấu hình Logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -26,6 +24,7 @@ logging.basicConfig(
 
 user_data = {}
 
+# 3. Thuật toán xử lý chuỗi BCR
 def analyze_bcr(history: str) -> str:
     tokens = [c.upper() for c in history.replace(" ", "") if c.upper() in ['P', 'B', 'T']]
     
@@ -74,6 +73,7 @@ def analyze_bcr(history: str) -> str:
         f"📌 *Cơ sở:* {reason}"
     )
 
+# 4. Các lệnh Telegram Bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "🤖 **Chào mừng bạn đến với BCR Analytics Bot!**\n\n"
@@ -95,10 +95,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response = analyze_bcr(text)
     await update.message.reply_text(response, parse_mode='Markdown')
 
+# 5. Khởi chạy song song Flask Server và Telegram Bot
 if __name__ == '__main__':
+    # Chạy Web Server trên một luồng riêng
+    server_thread = threading.Thread(target=run_flask)
+    server_thread.daemon = True
+    server_thread.start()
+
+    # Chạy Telegram Bot
     BOT_TOKEN = "8960157189:AAExpczWz8zTNJZo0ApGq_pt-v2INRV4XII"
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("clear", clear))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    
     app.run_polling()
